@@ -88,27 +88,30 @@ export function DailyDashboard() {
           reading: '20:00',
         }
 
-        const processedTasks: Task[] = (dailyTasks ?? []).map((t: any) => ({
-          id: String(t.id ?? crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)),
-          title: String(t.title ?? ''),
-          time: String((t.time && String(t.time)) || defaultByType[String(t.type)] || '09:00'),
-          type: (t.type as Task['type']) ?? 'work',
-          completed: Boolean(t.completed ?? false),
-          description: t.description ? String(t.description) : undefined,
-        }))
+        const processedTasks: Task[] = (dailyTasks ?? []).map((t: any) => {
+          const taskId = t.id || crypto.randomUUID?.() || Math.random().toString(36).slice(2);
+          return {
+            id: String(taskId),
+            title: String(t.title ?? ''),
+            time: String((t.time && String(t.time)) || defaultByType[String(t.type)] || '09:00'),
+            type: (t.type as Task['type']) ?? 'work',
+            completed: Boolean(t.completed ?? false),
+            description: t.description ? String(t.description) : undefined,
+          };
+        })
 
         // If no tasks exist, provide a full-day template
         if (processedTasks.length === 0) {
           const fullDayTasks: Task[] = [
-            { id: '1', title: 'Sleep', time: '23:00', type: 'rest', completed: false, description: 'Sleep from 11:00 PM to 6:00 AM' },
-            { id: '2', title: 'Morning Routine', time: '06:00', type: 'rest', completed: false, description: 'Wake up and morning preparation' },
-            { id: '3', title: 'Morning Workout', time: '07:00', type: 'workout', completed: false, description: '30min cardio + stretching' },
-            { id: '4', title: 'Healthy Breakfast', time: '08:30', type: 'meal', completed: false, description: 'Oatmeal with berries' },
-            { id: '5', title: 'Deep Work Session', time: '09:00', type: 'work', completed: false, description: 'Focus block - main projects' },
-            { id: '6', title: 'Lunch Break', time: '12:30', type: 'meal', completed: false, description: 'Healthy lunch and short walk' },
-            { id: '7', title: 'Afternoon Work', time: '14:00', type: 'work', completed: false, description: 'Secondary tasks and meetings' },
-            { id: '8', title: 'Evening Reading', time: '20:00', type: 'reading', completed: false, description: 'Read for 30-45 minutes' },
-            { id: '9', title: 'Wind Down', time: '21:30', type: 'rest', completed: false, description: 'Prepare for sleep and relaxation' },
+            { id: crypto.randomUUID?.() || '1', title: 'Sleep', time: '23:00', type: 'rest', completed: false, description: 'Sleep from 11:00 PM to 6:00 AM' },
+            { id: crypto.randomUUID?.() || '2', title: 'Morning Routine', time: '06:00', type: 'rest', completed: false, description: 'Wake up and morning preparation' },
+            { id: crypto.randomUUID?.() || '3', title: 'Morning Workout', time: '07:00', type: 'workout', completed: false, description: '30min cardio + stretching' },
+            { id: crypto.randomUUID?.() || '4', title: 'Healthy Breakfast', time: '08:30', type: 'meal', completed: false, description: 'Oatmeal with berries' },
+            { id: crypto.randomUUID?.() || '5', title: 'Deep Work Session', time: '09:00', type: 'work', completed: false, description: 'Focus block - main projects' },
+            { id: crypto.randomUUID?.() || '6', title: 'Lunch Break', time: '12:30', type: 'meal', completed: false, description: 'Healthy lunch and short walk' },
+            { id: crypto.randomUUID?.() || '7', title: 'Afternoon Work', time: '14:00', type: 'work', completed: false, description: 'Secondary tasks and meetings' },
+            { id: crypto.randomUUID?.() || '8', title: 'Evening Reading', time: '20:00', type: 'reading', completed: false, description: 'Read for 30-45 minutes' },
+            { id: crypto.randomUUID?.() || '9', title: 'Wind Down', time: '21:30', type: 'rest', completed: false, description: 'Prepare for sleep and relaxation' },
           ]
           setTasks(fullDayTasks)
           
@@ -127,6 +130,23 @@ export function DailyDashboard() {
           }
         } else {
           setTasks(processedTasks)
+          
+          // If tasks were loaded but didn't have proper IDs, save them back with the new IDs
+          const tasksNeedingSave = processedTasks.some(t => !dailyTasks.find((dt: any) => dt.id === t.id))
+          if (tasksNeedingSave) {
+            try {
+              await fetch(`${API_BASE_URL}api/plan/comprehensive`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+                },
+                body: JSON.stringify({ daily_tasks: processedTasks }),
+              })
+            } catch (saveError) {
+              console.error('Failed to save updated tasks with IDs:', saveError instanceof Error ? saveError.message : String(saveError))
+            }
+          }
         }
       } catch (err) {
         console.error('Fetch tasks error:', err instanceof Error ? err.message : String(err))
@@ -227,12 +247,12 @@ export function DailyDashboard() {
 
     try {
       const API_BASE_URL = ((import.meta.env.VITE_API_BASE_URL as string) || '/').replace(/\/?$/, '/')
-      const accessToken = localStorage.getItem('accessToken')
+      let accessToken = localStorage.getItem('accessToken')
       const today = new Date().toISOString().slice(0, 10)
       const updated = next.find(t => t.id === taskId)!
 
       // Use the new comprehensive planning API
-      const response = await fetch(`${API_BASE_URL}api/plan/update-task`, {
+      let response = await fetch(`${API_BASE_URL}api/plan/update-task`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -245,8 +265,45 @@ export function DailyDashboard() {
         }),
       })
 
+      // Handle token refresh if needed
+      if (response.status === 403) {
+        const refreshToken = localStorage.getItem('refreshToken')
+        if (refreshToken) {
+          try {
+            const refreshResponse = await fetch(`${API_BASE_URL}api/auth/refresh`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ refreshToken }),
+            })
+            
+            if (refreshResponse.ok) {
+              const refreshData = await refreshResponse.json()
+              localStorage.setItem('accessToken', refreshData.accessToken)
+              accessToken = refreshData.accessToken
+              
+              // Retry the original request with new token
+              response = await fetch(`${API_BASE_URL}api/plan/update-task`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify({ 
+                  taskId: updated.id, 
+                  completed: updated.completed, 
+                  date: today 
+                }),
+              })
+            }
+          } catch (refreshError) {
+            console.error('Token refresh failed:', refreshError)
+          }
+        }
+      }
+
       if (!response.ok) {
-        throw new Error(`Update failed: ${response.status}`)
+        const errorText = await response.text()
+        throw new Error(`Update failed: ${response.status} - ${errorText}`)
       }
 
       toast({
