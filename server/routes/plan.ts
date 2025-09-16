@@ -28,7 +28,7 @@ const planningDataSchema = z.object({
     time: z.string().regex(/^\d{2}:\d{2}$/, 'Time must be in HH:MM format'),
     type: z.enum(['workout', 'meal', 'reading', 'work', 'rest']),
     completed: z.boolean().default(false),
-    description: z.string()
+    description: z.string().optional()
   })).optional()
 });
 
