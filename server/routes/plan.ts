@@ -55,7 +55,7 @@ router.post('/generate', authenticateToken, async (req: AuthRequest, res) => {
     const timezone = validation.data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 
     // Generate daily plan
-    const dailyPlan = await generateDailyPlan({ profile, date, timezone });
+    const dailyPlan = await generateDailyPlan({ profile, userId: req.user!.id, date, timezone });
 
     // Save plan to database
     await storage.upsertDailyPlan({
