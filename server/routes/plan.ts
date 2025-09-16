@@ -164,9 +164,11 @@ router.get('/today', authenticateToken, async (req: AuthRequest, res) => {
 // POST /api/plan/comprehensive - Save comprehensive planning data (long-term, monthly, daily)
 router.post('/comprehensive', authenticateToken, async (req: AuthRequest, res) => {
   try {
+    console.log('[DEBUG] Comprehensive save request body:', JSON.stringify(req.body, null, 2));
     const validation = planningDataSchema.safeParse(req.body);
     
     if (!validation.success) {
+      console.log('[DEBUG] Validation failed:', JSON.stringify(validation.error.errors, null, 2));
       return res.status(400).json({ 
         message: 'Invalid planning data', 
         errors: validation.error.errors 
