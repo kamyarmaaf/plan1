@@ -346,19 +346,24 @@ router.post('/update-task', authenticateToken, async (req: AuthRequest, res) => 
 
     // Find and update the task in daily_tasks or items array
     const tasks = planData.daily_tasks || planData.items || [];
-    console.log(`[DEBUG] Found tasks in plan:`, tasks.length, 'tasks');
-    console.log(`[DEBUG] Looking for taskId:`, taskId, 'in tasks:', tasks.map((t: any) => ({ id: t.id, title: t.title })));
-    
-    const taskIndex = tasks.findIndex((task: any) => task.id === taskId);
-    console.log(`[DEBUG] Task index found:`, taskIndex);
+    let taskIndex = tasks.findIndex((task: any) => String(task.id) === String(taskId));
     
     if (taskIndex === -1) {
-      console.log(`[DEBUG] Task not found - available task IDs:`, tasks.map((t: any) => t.id));
-      return res.status(404).json({ message: 'Task not found' });
+      // If the task does not exist yet, create it with minimal fields
+      const newTask = {
+        id: taskId,
+        title: tasks[0]?.title || 'Task',
+        time: tasks[0]?.time || '09:00',
+        type: tasks[0]?.type || 'work',
+        completed,
+        description: tasks[0]?.description || ''
+      };
+      tasks.push(newTask);
+      taskIndex = tasks.length - 1;
+    } else {
+      // Update only the completed status when task exists
+      tasks[taskIndex].completed = completed;
     }
-
-    // Update only the completed status
-    tasks[taskIndex].completed = completed;
     
     // Preserve original plan structure while updating the tasks
     if (planData.daily_tasks) {

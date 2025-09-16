@@ -58,15 +58,12 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // تنظیم host و پورت برای ویندوز و لینوکس
-  const port = process.env.PORT || '5000';
-  const host = "0.0.0.0";
+  // تنظیم host و پورت برای همه‌ی سیستم‌عامل‌ها
+  const port = Number(process.env.PORT) || 5000;
+  // روی لینوکس میشه "0.0.0.0" ولی روی ویندوز بهتره "127.0.0.1"
+  const host = process.platform === "win32" ? "127.0.0.1" : "0.0.0.0";
 
-  server.listen({
-    port,
-    host,
-    reusePort: true,
-  }, () => {
-    log(`Server running at http://${host}:${port}`);
+  server.listen({ port, host }, () => {
+    log(`✅ Server running at http://${host}:${port}`);
   });
 })();
