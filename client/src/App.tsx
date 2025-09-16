@@ -15,6 +15,7 @@ import { AuthForm } from "./components/AuthForm"
 import { ProfileSetup } from "./components/ProfileSetup"
 import { DailyDashboard } from "./components/DailyDashboard"
 import { MonthlyPlanner } from "./components/MonthlyPlanner"
+import { Goals } from "./components/Goals"
 import { ProgressTracking } from "./components/ProgressTracking"
 import { ContactForm } from "./components/ContactForm"
 import NotFound from "@/pages/not-found"
@@ -28,7 +29,7 @@ function Router() {
       <Route path="/dashboard" component={DailyDashboard} />
       <Route path="/monthly" component={MonthlyPlanner} />
       <Route path="/progress" component={ProgressTracking} />
-      <Route path="/goals" component={MonthlyPlanner} />
+      <Route path="/goals" component={Goals} />
       <Route path="/contact" component={ContactForm} />
       <Route path="/settings">
         <div className="p-6">
