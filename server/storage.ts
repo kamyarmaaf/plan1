@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type Profile, type InsertProfile, type DailyPlan, type InsertDailyPlan, type Message, type InsertMessage, users, profiles, dailyPlans, messages } from "@shared/schema";
+import { type User, type InsertUser, type Profile, type InsertProfile, type DailyPlan, type InsertDailyPlan, type Message, type InsertMessage, type LongTermGoal, type InsertLongTermGoal, users, profiles, dailyPlans, messages, longTermGoals } from "@shared/schema";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
 
@@ -12,6 +12,10 @@ export interface IStorage {
   upsertDailyPlan(plan: InsertDailyPlan): Promise<DailyPlan>;
   createMessage(message: InsertMessage): Promise<Message>;
   getAllMessages(): Promise<Message[]>;
+  getLongTermGoals(userId: number): Promise<LongTermGoal[]>;
+  createLongTermGoal(goal: InsertLongTermGoal): Promise<LongTermGoal>;
+  updateLongTermGoal(goalId: number, updates: Partial<InsertLongTermGoal>): Promise<LongTermGoal>;
+  deleteLongTermGoal(goalId: number): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -92,6 +96,33 @@ export class DbStorage implements IStorage {
   async getAllMessages(): Promise<Message[]> {
     const result = await db.select().from(messages).orderBy(messages.createdAt);
     return result;
+  }
+
+  async getLongTermGoals(userId: number): Promise<LongTermGoal[]> {
+    const result = await db.select().from(longTermGoals)
+      .where(eq(longTermGoals.userId, userId))
+      .orderBy(longTermGoals.priority, longTermGoals.createdAt);
+    return result;
+  }
+
+  async createLongTermGoal(goal: InsertLongTermGoal): Promise<LongTermGoal> {
+    const result = await db.insert(longTermGoals).values(goal).returning();
+    return result[0];
+  }
+
+  async updateLongTermGoal(goalId: number, updates: Partial<InsertLongTermGoal>): Promise<LongTermGoal> {
+    const result = await db.update(longTermGoals)
+      .set({
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(eq(longTermGoals.id, goalId))
+      .returning();
+    return result[0];
+  }
+
+  async deleteLongTermGoal(goalId: number): Promise<void> {
+    await db.delete(longTermGoals).where(eq(longTermGoals.id, goalId));
   }
 }
 

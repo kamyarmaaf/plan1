@@ -49,6 +49,21 @@ export const messages = sqliteTable("messages", {
   createdAt: integer("created_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const longTermGoals = sqliteTable("long_term_goals", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  category: text("category").notNull(), // fitness, learning, career, personal, financial
+  priority: integer("priority").notNull().default(1), // 1-5 scale
+  targetTimeframe: text("target_timeframe").notNull(), // "6 months", "1 year", "2 years", etc.
+  progress: integer("progress").notNull().default(0), // 0-100 percentage
+  status: text("status").notNull().default("active"), // active, completed, paused, archived
+  aiContext: text("ai_context"), // Additional AI-generated context for this goal
+  createdAt: integer("created_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   name: true,
   email: true,
@@ -85,6 +100,18 @@ export const insertMessageSchema = createInsertSchema(messages).pick({
   message: true,
 });
 
+export const insertLongTermGoalSchema = createInsertSchema(longTermGoals).pick({
+  userId: true,
+  title: true,
+  description: true,
+  category: true,
+  priority: true,
+  targetTimeframe: true,
+  progress: true,
+  status: true,
+  aiContext: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type InsertProfile = z.infer<typeof insertProfileSchema>;
@@ -93,3 +120,5 @@ export type InsertDailyPlan = z.infer<typeof insertDailyPlanSchema>;
 export type DailyPlan = typeof dailyPlans.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type Message = typeof messages.$inferSelect;
+export type InsertLongTermGoal = z.infer<typeof insertLongTermGoalSchema>;
+export type LongTermGoal = typeof longTermGoals.$inferSelect;
