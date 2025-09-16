@@ -1,0 +1,50 @@
+Build a full-stack web application with the following features:
+
+1. **Authentication**
+   - User registration and login (email + password).
+   - Profile setup: at the start, ask users about:
+     - Work/study activities
+     - Hobbies and interests
+     - Preferred sports/exercises
+     - Place of living (for cultural/food relevance)
+     - Weight, height, age
+     - Reading habits (if they don’t know what to read, leave empty and suggest books later)
+   - "Contact us" page.
+
+2. **Daily & Monthly Planner**
+   - Each day, when the user logs in, the app should show:
+     - Daily schedule including:
+       - Workout plan
+       - Meals
+       - Reading time (books suggested by AI if missing)
+       - Work/study blocks
+       - Rest periods
+     - Alarms/notifications for scheduled tasks.
+   - At the start of each month, show a **monthly overview plan**.
+
+3. **AI-Powered Personalization**
+   - Use AI to generate personalized daily and monthly plans based on the profile data.
+   - The plan must adapt to the user’s lifestyle, goals, and cultural context.
+   - Suggest books if the user hasn’t chosen one.
+   - Plans should be interactive: users can edit tasks and confirm acceptance of the final plan.
+   - Give a **vision/progress preview** like:
+     - “In 6 months you should achieve X”
+     - “In 1 year you should achieve Y”
+
+4. **Progress Tracking**
+   - Track progress daily, monthly, every 6 months, and yearly.
+   - Compare planned goals vs actual achievements.
+   - Show visual reports/charts of progress.
+
+5. **Interactivity**
+   - At the beginning of each day, the app asks the user to confirm or adjust their schedule.
+   - Simple and clean UI for interaction (dashboard, timeline, calendar).
+   - Users should be able to accept or modify their plan before starting the day.
+
+6. **Technical Requirements**
+   - Build with modern web stack (React or Next.js frontend + Node.js/Express backend).
+   - Use a database (PostgreSQL or MongoDB) to store user data and schedules.
+   - Integrate AI (OpenAI API or similar) to generate plans, suggestions, and progress reviews.
+   - Deployable on Replit.
+
+The final app should be interactive, scalable, and designed for a global audience.
