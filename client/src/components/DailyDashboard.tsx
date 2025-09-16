@@ -111,19 +111,38 @@ export function DailyDashboard() {
             { id: '9', title: 'Wind Down', time: '21:30', type: 'rest', completed: false, description: 'Prepare for sleep and relaxation' },
           ]
           setTasks(fullDayTasks)
+          
+          // Save default tasks to backend to prevent "Task not found" errors
+          try {
+            await fetch(`${API_BASE_URL}api/plan/comprehensive`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+              },
+              body: JSON.stringify({ daily_tasks: fullDayTasks }),
+            })
+          } catch (saveError) {
+            console.error('Failed to save default tasks:', saveError instanceof Error ? saveError.message : String(saveError))
+          }
         } else {
           setTasks(processedTasks)
         }
       } catch (err) {
-        console.error(err)
+        console.error('Fetch tasks error:', err instanceof Error ? err.message : String(err))
         // Fallback to full-day template on error
-        setTasks([
+        const fallbackTasks: Task[] = [
           { id: '1', title: 'Sleep', time: '23:00', type: 'rest', completed: false, description: 'Sleep from 11:00 PM to 6:00 AM' },
           { id: '2', title: 'Morning Routine', time: '06:00', type: 'rest', completed: false, description: 'Wake up and morning preparation' },
           { id: '3', title: 'Morning Workout', time: '07:00', type: 'workout', completed: false, description: '30min cardio + stretching' },
           { id: '4', title: 'Healthy Breakfast', time: '08:30', type: 'meal', completed: false, description: 'Nutritious breakfast' },
           { id: '5', title: 'Deep Work', time: '09:00', type: 'work', completed: false, description: 'Focus block' },
-        ])
+          { id: '6', title: 'Lunch Break', time: '12:30', type: 'meal', completed: false, description: 'Healthy lunch' },
+          { id: '7', title: 'Afternoon Work', time: '14:00', type: 'work', completed: false, description: 'Secondary tasks' },
+          { id: '8', title: 'Evening Reading', time: '20:00', type: 'reading', completed: false, description: 'Read for 30 minutes' },
+          { id: '9', title: 'Wind Down', time: '21:30', type: 'rest', completed: false, description: 'Prepare for sleep' },
+        ]
+        setTasks(fallbackTasks)
       }
     }
 
@@ -235,13 +254,13 @@ export function DailyDashboard() {
         description: "Your progress has been saved.",
       })
     } catch (e) {
-      console.error(e)
+      console.error('Task toggle error:', e instanceof Error ? e.message : String(e))
       // Revert the change if API call fails
       setTasks(tasks)
       
       toast({
         title: "Update failed",
-        description: "Unable to save your progress. Please try again.",
+        description: e instanceof Error ? e.message : "Unable to save your progress. Please try again.",
         variant: "destructive",
       })
     }
