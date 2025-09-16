@@ -15,6 +15,7 @@ import profileRoutes from "./routes/profile";
 import planRoutes from "./routes/plan";
 import aiRoutes from "./routes/ai";
 import contactRoutes from "./routes/contact";
+import goalsRoutes from "./routes/goals";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize database tables
@@ -25,6 +26,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/plan', planRoutes);
   app.use('/api/ai', aiRoutes);
   app.use('/api/contact', contactRoutes);
+  app.use('/api/goals', goalsRoutes);
 
   // Auth routes
   app.post('/api/auth/register', async (req, res) => {

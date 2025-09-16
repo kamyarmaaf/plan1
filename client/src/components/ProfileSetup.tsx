@@ -102,6 +102,17 @@ export function ProfileSetup({ onComplete }: { onComplete: () => void }) {
         throw new Error(errorData.message || 'Failed to save profile');
       }
 
+      // Fire-and-forget: Generate long-term goals (this happens on first profile completion)
+      fetch(`${API_BASE_URL}api/goals/generate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+      }).catch(error => {
+        console.warn('Failed to generate long-term goals:', error);
+      });
+
       // Fire-and-forget: Generate daily plan
       const today = new Date().toISOString().slice(0, 10);
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
