@@ -297,8 +297,11 @@ router.post('/update-task', authenticateToken, async (req: AuthRequest, res) => 
     const targetDate = date || new Date().toISOString().slice(0, 10);
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     
+    console.log(`[DEBUG] Updating task - userId: ${req.user!.id}, taskId: ${taskId}, completed: ${completed}, date: ${targetDate}`);
+    
     // Get current daily plan
     let plan = await storage.getDailyPlan(req.user!.id, targetDate);
+    console.log(`[DEBUG] Found existing plan:`, plan ? 'YES' : 'NO');
     
     // If no plan exists, create one with default template tasks
     if (!plan) {
@@ -335,14 +338,20 @@ router.post('/update-task', authenticateToken, async (req: AuthRequest, res) => 
     try {
       planData = JSON.parse(plan.planJson);
     } catch (error) {
+      console.log(`[DEBUG] Error parsing plan JSON:`, error);
       return res.status(500).json({ message: 'Error parsing plan data' });
     }
 
     // Find and update the task in daily_tasks or items array
     const tasks = planData.daily_tasks || planData.items || [];
+    console.log(`[DEBUG] Found tasks in plan:`, tasks.length, 'tasks');
+    console.log(`[DEBUG] Looking for taskId:`, taskId, 'in tasks:', tasks.map((t: any) => ({ id: t.id, title: t.title })));
+    
     const taskIndex = tasks.findIndex((task: any) => task.id === taskId);
+    console.log(`[DEBUG] Task index found:`, taskIndex);
     
     if (taskIndex === -1) {
+      console.log(`[DEBUG] Task not found - available task IDs:`, tasks.map((t: any) => t.id));
       return res.status(404).json({ message: 'Task not found' });
     }
 
