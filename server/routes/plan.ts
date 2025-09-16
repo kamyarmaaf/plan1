@@ -233,7 +233,7 @@ router.get('/comprehensive', authenticateToken, async (req: AuthRequest, res) =>
     // Get long-term plan
     const longTermPlan = await storage.getDailyPlan(req.user!.id, `long-term-${currentYear}`);
     
-    // Get monthly plan
+    // Get monthly plan (stored with AI-generated key format)
     const monthlyPlan = await storage.getDailyPlan(req.user!.id, `monthly-${currentYear}-${currentMonth}`);
     
     // Get daily plan
@@ -249,7 +249,9 @@ router.get('/comprehensive', authenticateToken, async (req: AuthRequest, res) =>
         longTermData = JSON.parse(longTermPlan.planJson);
       }
       if (monthlyPlan) {
-        monthlyData = JSON.parse(monthlyPlan.planJson);
+        // Parse the AI-generated monthly plan structure
+        const parsed = JSON.parse(monthlyPlan.planJson);
+        monthlyData = parsed; // The AI endpoint stores the complete structure directly
       }
       if (dailyPlan) {
         const parsed = JSON.parse(dailyPlan.planJson);
