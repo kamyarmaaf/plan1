@@ -3,7 +3,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Clock, CheckCircle2, Circle, Edit, Zap, Book, Dumbbell, Coffee, Brain } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Clock, CheckCircle2, Circle, Edit, Zap, Book, Dumbbell, Coffee, Brain, Save, X } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useLanguage } from "@/contexts/LanguageContext"
 
@@ -34,6 +37,9 @@ const typeColors = {
 
 export function DailyDashboard() {
   const [tasks, setTasks] = useState<Task[]>([])
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [editedTasks, setEditedTasks] = useState<Task[]>([])
+  const [isSaving, setIsSaving] = useState(false)
   const { toast } = useToast()
   const { t } = useLanguage()
 
@@ -124,6 +130,78 @@ export function DailyDashboard() {
     fetchTasks()
   }, [])
 
+  const openEditDialog = () => {
+    setEditedTasks([...tasks])
+    setIsEditDialogOpen(true)
+  }
+
+  const closeEditDialog = () => {
+    setIsEditDialogOpen(false)
+    setEditedTasks([])
+  }
+
+  const updateEditedTask = (taskId: string, field: keyof Task, value: any) => {
+    setEditedTasks(prev => prev.map(task => 
+      task.id === taskId ? { ...task, [field]: value } : task
+    ))
+  }
+
+  const saveScheduleChanges = async () => {
+    setIsSaving(true)
+    try {
+      const API_BASE_URL = ((import.meta.env.VITE_API_BASE_URL as string) || '/').replace(/\/?$/, '/')
+      const accessToken = localStorage.getItem('accessToken')
+
+      // Sanitize tasks - ensure all required fields are present
+      const sanitizedTasks = editedTasks.map(task => ({
+        ...task,
+        description: task.description || '' // Ensure description is always a string
+      }))
+
+      // Save the entire daily plan with updated tasks - correct API format
+      const response = await fetch(`${API_BASE_URL}api/plan/comprehensive`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        body: JSON.stringify({ 
+          daily_tasks: sanitizedTasks
+        }),
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        
+        // Verify that daily tasks were actually saved
+        if (result.saved?.daily) {
+          // Update local state
+          setTasks(sanitizedTasks)
+          closeEditDialog()
+          
+          toast({
+            title: "Schedule updated!",
+            description: "Your daily schedule has been saved successfully.",
+          })
+        } else {
+          throw new Error('Daily tasks were not saved properly')
+        }
+      } else {
+        const errorText = await response.text()
+        throw new Error(`Update failed: ${response.status} - ${errorText}`)
+      }
+    } catch (error) {
+      console.error('Save schedule error:', error)
+      toast({
+        title: "Update failed",
+        description: "Unable to save your schedule changes. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   const toggleTask = async (taskId: string) => {
     const next = tasks.map(t => t.id === taskId ? { ...t, completed: !t.completed } : t)
     setTasks(next)
@@ -171,7 +249,7 @@ export function DailyDashboard() {
 
   const completedTasks = tasks.filter(task => task.completed).length
   const totalTasks = tasks.length
-  const progressPercentage = (completedTasks / totalTasks) * 100
+  const progressPercentage = totalTasks === 0 ? 0 : (completedTasks / totalTasks) * 100
 
   const currentDate = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -188,7 +266,7 @@ export function DailyDashboard() {
           <h1 className="text-3xl font-bold">{t.dashboard_good_morning}</h1>
           <p className="text-muted-foreground">{currentDate}</p>
         </div>
-        <Button variant="outline" data-testid="button-edit-schedule">
+        <Button variant="outline" data-testid="button-edit-schedule" onClick={openEditDialog}>
           <Edit className="w-4 h-4 mr-2" />
           {t.dashboard_edit_schedule}
         </Button>
@@ -266,6 +344,129 @@ export function DailyDashboard() {
           )
         })}
       </div>
+
+      {/* Edit Schedule Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={(open) => open ? setEditedTasks([...tasks]) : closeEditDialog()}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Daily Schedule</DialogTitle>
+            <DialogDescription>
+              Modify your tasks, times, and details for today's schedule.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {editedTasks.map((task, index) => {
+              const Icon = typeIcons[task.type] ?? Brain
+              
+              return (
+                <Card key={task.id} className="p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Task Title</label>
+                      <Input
+                        value={task.title}
+                        onChange={(e) => updateEditedTask(task.id, 'title', e.target.value)}
+                        placeholder="Enter task title"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Time</label>
+                      <Input
+                        type="time"
+                        value={task.time}
+                        onChange={(e) => updateEditedTask(task.id, 'time', e.target.value)}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Type</label>
+                      <Select
+                        value={task.type}
+                        onValueChange={(value) => updateEditedTask(task.id, 'type', value as Task['type'])}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="workout">Workout</SelectItem>
+                          <SelectItem value="meal">Meal</SelectItem>
+                          <SelectItem value="reading">Reading</SelectItem>
+                          <SelectItem value="work">Work</SelectItem>
+                          <SelectItem value="rest">Rest</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2 md:col-span-2 lg:col-span-1">
+                      <label className="text-sm font-medium">Actions</label>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const newTasks = editedTasks.filter(t => t.id !== task.id)
+                          setEditedTasks(newTasks)
+                        }}
+                        className="w-full"
+                      >
+                        <X className="w-4 h-4 mr-2" />
+                        Remove
+                      </Button>
+                    </div>
+                    
+                    <div className="space-y-2 md:col-span-2 lg:col-span-4">
+                      <label className="text-sm font-medium">Description</label>
+                      <Input
+                        value={task.description || ''}
+                        onChange={(e) => updateEditedTask(task.id, 'description', e.target.value)}
+                        placeholder="Enter task description (optional)"
+                      />
+                    </div>
+                  </div>
+                </Card>
+              )
+            })}
+            
+            <Button
+              variant="outline"
+              onClick={() => {
+                const newTask: Task = {
+                  id: crypto.randomUUID?.() ?? Math.random().toString(36).slice(2),
+                  title: 'New Task',
+                  time: '09:00',
+                  type: 'work',
+                  completed: false,
+                  description: ''
+                }
+                setEditedTasks(prev => [...prev, newTask])
+              }}
+              className="w-full"
+            >
+              + Add New Task
+            </Button>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={closeEditDialog}>
+              Cancel
+            </Button>
+            <Button onClick={saveScheduleChanges} disabled={isSaving}>
+              {isSaving ? (
+                <>
+                  <Clock className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Changes
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
