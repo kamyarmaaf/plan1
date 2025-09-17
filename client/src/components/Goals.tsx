@@ -69,6 +69,28 @@ export function Goals() {
     }
   })
 
+  // Auto-generate goals when none exist
+  useEffect(() => {
+    const autoGenerate = async () => {
+      if (!goalsData || goalsData.length > 0) return
+      try {
+        const accessToken = localStorage.getItem('accessToken')
+        const res = await fetch(`${API_BASE_URL}api/goals/generate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          },
+        })
+        if (res.ok) {
+          await refetch()
+          toast({ title: 'Goals Generated', description: 'Your goals were created automatically.' })
+        }
+      } catch {}
+    }
+    autoGenerate()
+  }, [goalsData])
+
   // Update goal mutation
   const updateGoalMutation = useMutation({
     mutationFn: async ({ goalId, updates }: { goalId: number, updates: Partial<LongTermGoal> }) => {

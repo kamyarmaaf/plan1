@@ -251,7 +251,7 @@ export function DailyDashboard() {
       const today = new Date().toISOString().slice(0, 10)
       const updated = next.find(t => t.id === taskId)!
 
-      // Use the new comprehensive planning API
+      // Primary endpoint
       let response = await fetch(`${API_BASE_URL}api/plan/update-task`, {
         method: 'POST',
         headers: {
@@ -265,6 +265,31 @@ export function DailyDashboard() {
         }),
       })
 
+      // If missing plan/task on new users, try AI toggle fallback to persist
+      if (response.status === 404) {
+        const aiFallback = await fetch(`${API_BASE_URL}api/ai/daily-tasks/toggle`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          },
+          body: JSON.stringify({ date: today, id: updated.id, completed: updated.completed }),
+        })
+        if (!aiFallback.ok) {
+          // try one more time primary after AI fallback (in case it created plan structure)
+          response = await fetch(`${API_BASE_URL}api/plan/update-task`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+            },
+            body: JSON.stringify({ taskId: updated.id, completed: updated.completed, date: today }),
+          })
+        } else {
+          response = aiFallback
+        }
+      }
+
       // Handle token refresh if needed
       if (response.status === 403) {
         const refreshToken = localStorage.getItem('refreshToken')
@@ -275,29 +300,20 @@ export function DailyDashboard() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ refreshToken }),
             })
-            
             if (refreshResponse.ok) {
               const refreshData = await refreshResponse.json()
               localStorage.setItem('accessToken', refreshData.accessToken)
               accessToken = refreshData.accessToken
-              
-              // Retry the original request with new token
               response = await fetch(`${API_BASE_URL}api/plan/update-task`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
                   Authorization: `Bearer ${accessToken}`,
                 },
-                body: JSON.stringify({ 
-                  taskId: updated.id, 
-                  completed: updated.completed, 
-                  date: today 
-                }),
+                body: JSON.stringify({ taskId: updated.id, completed: updated.completed, date: today }),
               })
             }
-          } catch (refreshError) {
-            console.error('Token refresh failed:', refreshError)
-          }
+          } catch {}
         }
       }
 
@@ -306,15 +322,10 @@ export function DailyDashboard() {
         throw new Error(`Update failed: ${response.status} - ${errorText}`)
       }
 
-      toast({
-        title: "Task updated!",
-        description: "Your progress has been saved.",
-      })
+      toast({ title: "Task updated!", description: "Your progress has been saved." })
     } catch (e) {
       console.error('Task toggle error:', e instanceof Error ? e.message : String(e))
-      // Revert the change if API call fails
       setTasks(tasks)
-      
       toast({
         title: "Update failed",
         description: e instanceof Error ? e.message : "Unable to save your progress. Please try again.",

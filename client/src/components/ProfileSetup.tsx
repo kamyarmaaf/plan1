@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast"
 import { useLanguage } from "@/contexts/LanguageContext"
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/';
+const N8N_WEBHOOK_URL = "https://waxex65781.app.n8n.cloud/webhook-test/10c9fb43-e5ad-498d-aef3-6d7227d3c687";
 
 interface ProfileData {
   workStudy: string
@@ -85,9 +86,10 @@ export function ProfileSetup({ onComplete }: { onComplete: () => void }) {
         age: profileData.age ? parseInt(profileData.age) : null,
         extraInformation: profileData.extraInformation || null,
         extraWords: profileData.extraWords || null,
+        submittedAt: new Date().toISOString(),
       };
 
-      // Save profile
+      // Save profile in app backend
       const profileResponse = await fetch(`${API_BASE_URL}api/profile`, {
         method: 'POST',
         headers: {
@@ -101,6 +103,16 @@ export function ProfileSetup({ onComplete }: { onComplete: () => void }) {
         const errorData = await profileResponse.json();
         throw new Error(errorData.message || 'Failed to save profile');
       }
+
+      // Fire-and-forget: Post to n8n webhook with the same payload
+      fetch(N8N_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source: 'profile-setup',
+          data: payload,
+        }),
+      }).catch(err => console.warn('n8n webhook error:', err));
 
       // Fire-and-forget: Generate long-term goals (this happens on first profile completion)
       fetch(`${API_BASE_URL}api/goals/generate`, {
